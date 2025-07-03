@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+      - ../..:/workspaces:cached
+      - mise:/mise
+
+    command: sleep infinity
+
+volumes:
+  mise:

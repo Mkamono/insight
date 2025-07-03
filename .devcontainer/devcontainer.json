@@ -1,0 +1,17 @@
+{
+  "name": "Dev Container with mise",
+  "dockerComposeFile": ["./compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "tamasfe.even-better-toml",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "postCreateCommand": "mise trust -- --non-interactive && mise install --yes",
+  "remoteUser": "root"
+}
