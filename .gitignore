@@ -2,7 +2,7 @@
 .env
 
 # Build artifacts
-insight
+/insight
 
 # Database
 knowledge.db
@@ -20,7 +20,5 @@ Thumbs.db
 
 # Go build cache
 go.sum
-
-insight
 
 mise.local.toml
