@@ -1,2 +1,7 @@
 [tools]
+"npm:@google/gemini-cli" = "latest"
+sqlite = "latest"
 task = "latest"
+
+[env]
+GEMINI_API_KEY = "AIzaSyBTEgK53iynAQwvdm48YRxZsmzYBFqlDUc"

@@ -1,0 +1,26 @@
+# Environment variables
+.env
+
+# Build artifacts
+insight
+
+# Database
+knowledge.db
+
+# Export files
+exports/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go build cache
+go.sum
+
+insight
+
+mise.local.toml
