@@ -1,19 +1,10 @@
-import { google } from '@ai-sdk/google';
 import { generateObject, generateText, LanguageModel, tool } from 'ai';
 import { z } from 'zod';
 import type { Document, Fragment, Tag } from '../db/index.js';
+import { getAiModel } from './aimodel.js';
 import { DocumentService } from './documentService.js';
 import { FragmentService } from './fragmentService.js';
 import { TagService } from './tagService.js';
-
-function getGoogleAiModel(): LanguageModel {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GOOGLE_GENERATIVE_AI_API_KEY');
-  }
-  return google('models/gemini-2.5-flash');
-}
-
 export class AIService {
   private model: LanguageModel;
   private fragmentService: FragmentService;
@@ -21,7 +12,7 @@ export class AIService {
   private tagService: TagService;
 
   constructor() {
-    this.model = getGoogleAiModel();
+    this.model = getAiModel();
     this.fragmentService = new FragmentService();
     this.documentService = new DocumentService();
     this.tagService = new TagService();
@@ -313,8 +304,8 @@ ${fragments.map(f => `ID: ${f.id} - ${f.content}`).join('\n')}
 
 既存ドキュメント:
 ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
-  `ID: ${doc.id}, タイトル: ${doc.title}, 要約: ${doc.summary}`
-).join('\n') : '既存ドキュメントはありません'}
+      `ID: ${doc.id}, タイトル: ${doc.title}, 要約: ${doc.summary}`
+    ).join('\n') : '既存ドキュメントはありません'}
 
 指示:
 1. 各フラグメントについて、既存ドキュメントとの関連性を判断してください
@@ -356,7 +347,7 @@ ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
       }
       // 更新されたドキュメント（時間比較）
       return existingDoc.updatedAt && doc.updatedAt &&
-             existingDoc.updatedAt.getTime() !== doc.updatedAt.getTime();
+        existingDoc.updatedAt.getTime() !== doc.updatedAt.getTime();
     });
 
     return processedDocuments;
