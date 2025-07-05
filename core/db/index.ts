@@ -1,6 +1,6 @@
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
-import { join, dirname } from 'path';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import * as schema from './schema.js';
 
@@ -11,7 +11,7 @@ const projectRoot = join(__dirname, '../../..');
 const dbPath = join(projectRoot, 'knowledge', 'data.db');
 
 const client = createClient({
-  url: process.env.DATABASE_URL || `file:${dbPath}`,
+  url: `file:${dbPath}`,
 });
 
 export const db = drizzle(client, { schema });
