@@ -1,136 +1,231 @@
-# Insight - ドキュメント品質向上システム
+# Insight
 
-フラグメントの曖昧性を自動検出し、質問生成によってドキュメント品質を向上させるAI駆動型知識管理システムです。
+AI駆動型知識ドキュメント化・リンクシステム
 
-## 特徴
+## 概要
 
-- **曖昧性の自動検出**: 人物名の表記ゆれ、時期の不明確さ、専門用語の定義不足を自動検出
-- **質問駆動型改善**: AIが生成する質問に回答することで段階的にドキュメント品質を向上
-- **時系列考慮処理**: 新しい情報を優先し、情報の更新や変更を適切に反映
-- **Web対応設計**: 全機能がCLI実装済み、REST API化が容易
+Insightは、情報の断片（フラグメント）を自動的に整理・分析し、AIを活用して構造化されたドキュメントを生成するシステムです。散らばった情報を効率的に管理し、知識として体系化することで、より良い意思決定をサポートします。
 
-## セットアップ
+## 主な機能
 
-### 1. 環境変数の設定
+### 📝 フラグメント管理
+- テキスト、URL、画像の情報断片を収集・保存
+- 階層的な親子関係でフラグメントを整理
+- 処理状況の追跡とバッチ処理
 
-`.env.example`をコピーして`.env`ファイルを作成し、APIキーを設定してください：
+### 🤖 AI駆動ドキュメント生成
+- 複数フラグメントから意味のあるドキュメントを自動生成
+- Markdown形式での構造化されたコンテンツ作成
+- 自動要約とタグ付け機能
 
-```bash
-cp .env.example .env
-```
+### 🔗 インテリジェントリンク
+- フラグメントとドキュメントの自動関連付け
+- タグベースのカテゴリ化とフィルタリング
+- 関連性の高い情報の発見
 
-`.env`ファイルを編集：
-```bash
-# Gemini API Key for AI processing
-GEMINI_API_KEY=your_actual_gemini_api_key_here
+### 🖥️ 多様なインターフェース
+- **CLI**: コマンドライン操作で高速な情報処理
+- **Web UI**: 直感的なブラウザベースの管理画面
+- **API**: 外部システムとの連携
 
-# Database file path (optional)
-INSIGHT_DB_FILE=knowledge.db
-```
-
-### 2. ビルド
-
-```bash
-go build -o insight ./cmd/insight
-```
-
-## 基本的な使い方
-
-### 1. フラグメント追加
-```bash
-./insight add "プロジェクトAの進捗について田中さんと打ち合わせした"
-./insight add "最近、新機能の開発を開始した"
-```
-
-### 2. AI処理（質問生成+ドキュメント作成）
-```bash
-./insight process --ai
-```
-
-出力例：
-```
-Generated question (ID 1): 「田中さん」とは具体的にどなたですか？
-Generated question (ID 2): 「最近」の新機能開発はいつ開始しましたか？
-Generated question (ID 3): 「新機能」とは具体的にどのような機能ですか？
-New document 'プロジェクト進捗管理' created successfully with ID 1.
-```
-
-### 3. 質問確認と回答
-```bash
-# 質問一覧表示
-./insight question list
-
-# 質問に回答
-./insight answer 1 "田中さんは開発チームのリーダーです"
-./insight answer 2 "新機能開発は2025年7月1日に開始しました"
-```
-
-### 4. 再処理で品質向上
-```bash
-./insight process --ai
-```
-
-## コマンド一覧
-
-### 基本操作
-- `./insight add "テキスト"` - フラグメント追加
-- `./insight process --ai` - AI処理実行
-- `./insight status` - システム状況確認
-
-### 質問・回答システム
-- `./insight question list` - 質問一覧表示
-- `./insight question list --pending` - 未回答質問のみ表示
-- `./insight answer <ID> "回答"` - 質問に回答
-
-### ドキュメント管理
-- `./insight doc list` - ドキュメント一覧
-- `./insight doc show <ID>` - ドキュメント詳細表示
-- `./insight find --tag "タグ名"` - タグ検索
-- `./insight find --query "検索語"` - 全文検索
-
-### システム管理
-- `./insight clear --confirm` - 全データクリア
-- `./insight reset --confirm` - ドキュメントのみリセット
-- `./insight export` - Markdown形式でエクスポート
-- `./insight web --port 8080` - Webサーバー起動
+### 📁 自動ファイル生成
+- Markdownファイルの自動生成と管理
+- `/knowledge/documents/`ディレクトリでの整理
+- メタデータテーブルでの構造化情報表示
 
 ## アーキテクチャ
 
 ```
 insight/
-├── cmd/insight/main.go          # エントリーポイント
-├── internal/                    # 機能別パッケージ
-│   ├── ai/processor.go          # AI処理
-│   ├── cli/app.go              # CLI処理
-│   ├── database/database.go     # データアクセス層
-│   ├── export/export.go         # エクスポート機能
-│   └── web/server.go           # Webサーバー
-├── sql/                        # データベーススキーマ
-├── e2e/                        # E2Eテスト
-├── .env.example                # 環境変数テンプレート
-└── .gitignore                  # Git無視ファイル
+├── core/                 # コア機能ライブラリ
+│   ├── db/              # データベース接続・スキーマ
+│   ├── services/        # ビジネスロジック
+│   └── types/           # TypeScript型定義
+├── cli/                 # コマンドラインインターフェース
+├── web/                 # Next.js Webアプリケーション
+├── knowledge/           # 生成されたファイル
+│   ├── data.db         # SQLiteデータベース
+│   └── documents/      # 生成されたMarkdownファイル
+└── dist/               # コンパイル済みJavaScript
 ```
 
-## 質問生成の仕組み
+## インストール・セットアップ
 
-AIは以下の曖昧性を自動検出して質問を生成します：
+### 必要環境
+- Node.js 18以上
+- [mise](https://mise.jdx.dev/) （推奨）
+- Google Gemini API キー
 
-1. **人物・組織の同定**: 「田中さん」「斎藤さん」などの表記ゆれ
-2. **時期・日付**: 「最近」「先日」「今度」などの不明確な時間表現
-3. **場所・部署**: 「あの部署」「向こうのチーム」などの指示代名詞
-4. **専門用語・略語**: 「例の件」「あのシステム」などの具体性不足
-5. **数値・仕様**: 「多くの」「大幅な」などの曖昧な数量表現
+### 1. リポジトリのクローン
+```bash
+git clone <repository-url>
+cd insight
+```
 
-## テスト
+### 2. 依存関係のインストール
+```bash
+# mise使用の場合（推奨）
+mise install
+
+# 手動インストール
+npm install
+cd web && pnpm install
+```
+
+### 3. 環境変数の設定
+```bash
+# .env.local を作成
+cp .env.example .env.local
+```
+
+`.env.local`を編集してAPIキーを設定：
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### 4. データベース初期化
+```bash
+npm run build
+node dist/cli/index.js init
+```
+
+## 基本的な使用方法
+
+### CLIでの操作
+
+#### フラグメントの作成
+```bash
+# テキストフラグメントの作成
+node dist/cli/index.js fragment create -c "Docker はコンテナ化技術で、アプリケーションを軽量で移植可能な環境で実行できます"
+
+# URLありフラグメントの作成
+node dist/cli/index.js fragment create -c "Kubernetes公式ドキュメント" -u "https://kubernetes.io/docs/"
+```
+
+#### AI処理の実行
+```bash
+# 未処理フラグメントをバッチ処理
+node dist/cli/index.js ai process-all
+```
+
+#### データの確認
+```bash
+# フラグメント一覧
+node dist/cli/index.js fragment list
+
+# ドキュメント一覧
+node dist/cli/index.js document list
+```
+
+### Webインターフェース
 
 ```bash
-# E2Eテスト実行
-cd e2e && go test -v
-
-# ユニットテスト実行
-go test ./...
+# 開発サーバーの起動
+cd web
+pnpm run dev
 ```
+
+ブラウザで `http://localhost:9342` にアクセス
+
+## 技術スタック
+
+### バックエンド
+- **TypeScript**: タイプセーフな開発
+- **SQLite**: 軽量データベース
+- **Drizzle ORM**: TypeScript-first ORM
+- **Google Gemini API**: AI機能
+
+### フロントエンド
+- **Next.js 15**: React フレームワーク
+- **Tailwind CSS**: スタイリング
+- **react-markdown**: Markdownレンダリング
+
+### 開発ツール
+- **mise**: 開発環境管理
+- **ESLint**: コード品質
+- **Commander.js**: CLI構築
+
+## データベース設計
+
+### 主要テーブル
+- **fragments**: 情報断片（テキスト、URL、画像）
+- **documents**: AI生成ドキュメント
+- **tags**: カテゴリ分類用タグ
+- **questions**: システム質問
+
+### 関係
+- Fragment ↔ Document: 多対多
+- Document ↔ Tag: 多対多
+- Fragment: 階層構造（親子関係）
+
+## 開発コマンド
+
+```bash
+# TypeScriptビルド
+npm run build
+
+# 開発サーバー起動
+cd web && pnpm run dev
+
+# 型チェック
+npm run typecheck
+
+# リント
+npm run lint
+```
+
+## 生成されるファイル
+
+AIによって生成されるMarkdownファイルは以下の構造を持ちます：
+
+```markdown
+## 概要
+AIが生成したコンテンツ...
+
+---
+
+## メタデータ
+
+| 項目               | 内容               |
+| ------------------ | ------------------ |
+| **要約**           | ドキュメントの要約 |
+| **タグ**           | タグ1, タグ2       |
+| **作成日**         | 2025-01-01         |
+| **更新日**         | 2025-01-01         |
+| **ドキュメントID** | 1                  |
+
+## 参考フラグメント
+
+| ID  | 内容               | URL | 画像     |
+| --- | ------------------ | --- | -------- |
+| 1   | フラグメントの内容 | URL | 画像パス |
+```
+
+## AIの活用方法
+
+### バッチ処理
+複数のフラグメントを一度に処理し、APIコール数を削減：
+- 関連性の高いフラグメントをグループ化
+- 効率的なドキュメント生成
+- レート制限の回避
+
+### 自動化機能
+- フラグメントからドキュメントへの自動変換
+- タグの自動生成と分類
+- 関連情報の自動リンク
+
+## 今後の計画
+
+- [ ] 画像解析機能の強化
+- [ ] 質問応答システムの実装
+- [ ] 検索機能の拡充
+- [ ] エクスポート機能の追加
+- [ ] 他システムとの連携機能
 
 ## ライセンス
 
 MIT License
+
+## 作成者
+
+[あなたの名前]

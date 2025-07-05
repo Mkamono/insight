@@ -1,10 +1,35 @@
 [tools]
+node = "latest"
 "npm:@google/gemini-cli" = "latest"
+"npm:drizzle-kit" = "latest"
+pnpm = "latest"
 sqlite = "latest"
-task = "latest"
 
 [env]
-GEMINI_API_KEY = "AIzaSyBTEgK53iynAQwvdm48YRxZsmzYBFqlDUc"
+# GOOGLE_GENERATIVE_AI_API_KEYがセットされた.envファイルを使用
+# これは、GoogleのGemini APIを使用するために必要です。
+_.file = '.env'
 
 [tasks.build]
-run = "go build -o insight ./cmd/insight"
+description = "Build TypeScript to JavaScript"
+run = "pnpm run build"
+
+[tasks.cli]
+description = "Run CLI interface"
+run = "node dist/cli/index.js"
+depends = ["build"]
+
+[tasks.web]
+description = "Start web development server"
+run = "cd web && pnpm run dev"
+depends = ["build"]
+
+[tasks.web-build]
+description = "Build web application for production"
+run = "cd web && pnpm run build"
+depends = ["build"]
+
+[tasks.init]
+description = "Initialize database"
+run = "node dist/cli/index.js init"
+depends = ["build"]
