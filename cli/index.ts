@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { FragmentService, DocumentService, TagService, QuestionService, AIService } from '../core/index.js';
+import { AIService, DocumentService, FragmentService, QuestionService, TagService } from '../core/index.js';
 
 const program = new Command();
 
@@ -211,7 +211,7 @@ program
     try {
       const { migrate } = await import('drizzle-orm/libsql/migrator');
       const { db } = await import('../core/db/index.js');
-      
+
       await migrate(db, { migrationsFolder: './drizzle' });
       console.log('データベースが初期化されました');
     } catch (error) {
@@ -237,18 +237,6 @@ aiCmd
     }
   });
 
-aiCmd
-  .command('generate-tags <documentId>')
-  .description('ドキュメントにタグを生成')
-  .action(async (documentId) => {
-    const aiService = new AIService();
-    try {
-      const tags = await aiService.generateTagsForDocument(parseInt(documentId));
-      console.log('タグが生成されました:', tags);
-    } catch (error) {
-      console.error('エラー:', error);
-    }
-  });
 
 aiCmd
   .command('summarize')

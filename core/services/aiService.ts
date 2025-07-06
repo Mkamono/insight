@@ -1,6 +1,6 @@
 import { generateObject, generateText, LanguageModel, tool } from 'ai';
 import { z } from 'zod';
-import type { Document, Fragment, Tag } from '../db/index.js';
+import type { Document, Fragment } from '../db/index.js';
 import { getAiModel } from './aimodel.js';
 import { DocumentService } from './documentService.js';
 import { FragmentService } from './fragmentService.js';
@@ -34,42 +34,6 @@ export class AIService {
     return documents[0];
   }
 
-  async generateTagsForDocument(documentId: number): Promise<Tag[]> {
-    const document = await this.documentService.findById(documentId);
-    if (!document) {
-      throw new Error(`Document with id ${documentId} not found`);
-    }
-
-    const prompt = `
-以下のドキュメントに適切なタグを3-5個提案してください：
-
-タイトル: ${document.title}
-内容: ${document.content}
-要約: ${document.summary}
-
-要件:
-- 内容に基づいて適切なタグを提案してください
-- 技術的な内容、カテゴリ、主要なキーワードを考慮してください
-- 日本語のタグを生成してください
-`;
-
-    const result = await generateObject({
-      model: this.model,
-      prompt,
-      schema: z.object({
-        tags: z.array(z.string()).describe('推奨タグのリスト'),
-      }),
-    });
-
-    const tags: Tag[] = [];
-    for (const tagName of result.object.tags) {
-      const tag = await this.tagService.findOrCreate(tagName);
-      await this.documentService.linkToTag(documentId, tag.id);
-      tags.push(tag);
-    }
-
-    return tags;
-  }
 
   async summarizeContent(content: string): Promise<string> {
     const prompt = `
