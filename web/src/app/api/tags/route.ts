@@ -1,11 +1,9 @@
+import { findAllTags } from 'core';
 import { NextResponse } from 'next/server';
-import { TagService } from 'core';
-
-const tagService = new TagService();
 
 export async function GET() {
   try {
-    const tags = await tagService.findAll();
+    const tags = await findAllTags();
     return NextResponse.json(tags);
   } catch (error) {
     console.error('Error fetching tags:', error);

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import TwitterLikeInterface from './TwitterLikeInterface';
 
 interface Fragment {
   id: number;
   content: string;
   url?: string;
   imagePath?: string;
-  processed: boolean;
   createdAt: string;
 }
 
@@ -26,14 +26,9 @@ interface Tag {
   updatedAt: string;
 }
 
-interface DocumentDetail extends Document {
-  content: string;
-  tags?: Tag[];
-  fragments?: Fragment[];
-}
-
 export default function Dashboard() {
   const [fragments, setFragments] = useState<Fragment[]>([]);
+  const [unprocessedFragments, setUnprocessedFragments] = useState<Fragment[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -41,17 +36,10 @@ export default function Dashboard() {
   // 検索・フィルター関連
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [showSearch, setShowSearch] = useState(false);
-  
-  // フラグメント追加フォーム
-  const [content, setContent] = useState('');
-  const [url, setUrl] = useState('');
-  const [imagePath, setImagePath] = useState('');
-  const [createLoading, setCreateLoading] = useState(false);
   
   // AI処理
   const [processLoading, setProcessLoading] = useState(false);
-  const [processResult, setProcessResult] = useState<any>(null);
+  const [processResult, setProcessResult] = useState<{documents: Array<{id: number, title: string, summary: string}>} | null>(null);
   
   // データ読み込み
   const [loading, setLoading] = useState(true);
@@ -62,58 +50,29 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [fragmentsRes, documentsRes, tagsRes] = await Promise.all([
+      const [fragmentsRes, unprocessedRes, documentsRes, tagsRes] = await Promise.all([
         fetch('/api/fragments'),
+        fetch('/api/fragments?unprocessed=true'),
         fetch('/api/documents'),
-        fetch('/api/tags')
+        fetch('/api/tags'),
       ]);
-      
-      if (fragmentsRes.ok && documentsRes.ok && tagsRes.ok) {
-        const fragmentsData = await fragmentsRes.json();
-        const documentsData = await documentsRes.json();
-        const tagsData = await tagsRes.json();
-        setFragments(fragmentsData);
-        setDocuments(documentsData);
-        setAllDocuments(documentsData);
-        setTags(tagsData);
-      }
+
+      const [fragmentsData, unprocessedData, documentsData, tagsData] = await Promise.all([
+        fragmentsRes.json(),
+        unprocessedRes.json(),
+        documentsRes.json(),
+        tagsRes.json(),
+      ]);
+
+      setFragments(fragmentsData);
+      setUnprocessedFragments(unprocessedData);
+      setDocuments(documentsData);
+      setAllDocuments(documentsData);
+      setTags(tagsData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateFragment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateLoading(true);
-
-    try {
-      const response = await fetch('/api/fragments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content,
-          url: url || null,
-          imagePath: imagePath || null,
-        }),
-      });
-
-      if (response.ok) {
-        setContent('');
-        setUrl('');
-        setImagePath('');
-        await fetchData(); // データを再取得
-      } else {
-        alert('エラーが発生しました');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('エラーが発生しました');
-    } finally {
-      setCreateLoading(false);
     }
   };
 
@@ -133,25 +92,7 @@ export default function Dashboard() {
         // データを再取得して最新状態に更新
         await fetchData();
         
-        // フラグメントデータを再取得して確認
-        const fragmentsResponse = await fetch('/api/fragments');
-        if (fragmentsResponse.ok) {
-          const updatedFragments = await fragmentsResponse.json();
-          console.log('Processing completed. Updated fragments:', updatedFragments.length);
-          console.log('Unprocessed fragments remaining:', 
-            updatedFragments.filter((f: Fragment) => !f.processed).length);
-          
-          // 処理に失敗したフラグメントがあれば表示
-          const stillUnprocessed = updatedFragments.filter((f: Fragment) => !f.processed);
-          if (stillUnprocessed.length > 0) {
-            console.warn('Still unprocessed fragments:', stillUnprocessed.map((f: Fragment) => ({ id: f.id, content: f.content.slice(0, 50) })));
-            
-            // レート制限の可能性をユーザーに通知
-            if (data.documents.length < unprocessedCount) {
-              alert(`処理完了: ${data.documents.length}個のドキュメントが作成/更新されました。\n\n残り${stillUnprocessed.length}個のフラグメントが未処理です。\nこれはAPIのレート制限が原因の可能性があります。\n\n少し時間をおいてから再度実行してください。`);
-            }
-          }
-        }
+        alert(`処理完了: ${data.documents.length}個のドキュメントが作成/更新されました。`);
       } else {
         const errorData = await response.json();
         console.error('Process error:', errorData);
@@ -168,26 +109,6 @@ export default function Dashboard() {
   const handleDocumentClick = (doc: Document) => {
     // 別ページで開く
     window.open(`/documents/${doc.id}`, '_blank');
-  };
-
-  const handleSearch = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) {
-        params.append('q', searchQuery.trim());
-      }
-      if (selectedTagIds.length > 0) {
-        params.append('tags', selectedTagIds.join(','));
-      }
-
-      const response = await fetch(`/api/documents/search?${params.toString()}`);
-      if (response.ok) {
-        const searchResults = await response.json();
-        setDocuments(searchResults);
-      }
-    } catch (error) {
-      console.error('Error searching documents:', error);
-    }
   };
 
   const handleResetSearch = () => {
@@ -208,7 +129,26 @@ export default function Dashboard() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery.trim() || selectedTagIds.length > 0) {
-        handleSearch();
+        const searchDocuments = async () => {
+          try {
+            const params = new URLSearchParams();
+            if (searchQuery.trim()) {
+              params.append('q', searchQuery.trim());
+            }
+            if (selectedTagIds.length > 0) {
+              params.append('tags', selectedTagIds.join(','));
+            }
+
+            const response = await fetch(`/api/documents/search?${params.toString()}`);
+            if (response.ok) {
+              const searchResults = await response.json();
+              setDocuments(searchResults);
+            }
+          } catch (error) {
+            console.error('Error searching documents:', error);
+          }
+        };
+        searchDocuments();
       } else {
         setDocuments(allDocuments);
       }
@@ -217,7 +157,12 @@ export default function Dashboard() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, selectedTagIds, allDocuments]);
 
-  const unprocessedCount = fragments.filter(f => !f.processed).length;
+  const unprocessedCount = unprocessedFragments.length;
+
+  const handleFragmentCreate = async () => {
+    // フラグメント作成後にデータ再取得
+    await fetchData();
+  };
 
   if (loading) {
     return (
@@ -230,232 +175,130 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-8 bg-gray-50 dark:bg-gray-900">
-      <header className="max-w-6xl mx-auto mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Insight</h1>
-        <p className="text-gray-600 dark:text-gray-400">AI知識ドキュメント化システム</p>
-      </header>
-      
-      <main className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="min-h-screen bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* 左側: フラグメント追加 + AI処理 */}
+          {/* 左カラム: フラグメント入力 */}
+          <div className="lg:col-span-2">
+            <div className="bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
+              <h2 className="text-xl font-semibold mb-4 text-white">フラグメント</h2>
+              <TwitterLikeInterface onFragmentCreate={handleFragmentCreate} />
+            </div>
+          </div>
+
+          {/* 右カラム: 統計とAI処理 */}
           <div className="space-y-6">
-            
-            {/* フラグメント追加セクション */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">フラグメント追加</h2>
-              <form onSubmit={handleCreateFragment} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    内容 *
-                  </label>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="フラグメントの内容を入力..."
-                  />
+            {/* 統計カード */}
+            <div className="bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold mb-4 text-white">統計</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">フラグメント:</span>
+                  <span className="font-medium text-white">{fragments.length}</span>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      URL (オプション)
-                    </label>
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      画像パス (オプション)
-                    </label>
-                    <input
-                      type="text"
-                      value={imagePath}
-                      onChange={(e) => setImagePath(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="/path/to/image.jpg"
-                    />
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">ドキュメント:</span>
+                  <span className="font-medium text-white">{documents.length}</span>
                 </div>
-                
-                <button
-                  type="submit"
-                  disabled={createLoading || !content.trim()}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {createLoading ? '作成中...' : 'フラグメントを作成'}
-                </button>
-              </form>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">タグ:</span>
+                  <span className="font-medium text-white">{tags.length}</span>
+                </div>
+              </div>
             </div>
 
-            {/* AI処理セクション */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">AI処理</h2>
-              <div className="mb-4">
-                <p className="text-gray-600 dark:text-gray-400">
-                  未処理のフラグメント: <span className="font-medium">{unprocessedCount}個</span>
-                </p>
-              </div>
-
-              {/* 未処理フラグメント一覧 */}
-              {unprocessedCount > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">未処理フラグメント:</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {fragments.filter(f => !f.processed).map((fragment) => (
-                      <div
-                        key={fragment.id}
-                        className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border-l-2 border-yellow-400 dark:border-yellow-500"
-                      >
-                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                          {fragment.content.length > 100 
-                            ? `${fragment.content.slice(0, 100)}...` 
-                            : fragment.content}
-                        </p>
-                        {fragment.url && (
-                          <a
-                            href={fragment.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-block text-xs"
-                          >
-                            🔗 {fragment.url}
-                          </a>
-                        )}
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          ID: {fragment.id} • {new Date(fragment.createdAt).toLocaleDateString('ja-JP')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
+            {/* AI処理カード */}
+            <div className="bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold mb-4 text-white">AI処理</h3>
               <button
                 onClick={handleProcess}
                 disabled={processLoading || unprocessedCount === 0}
-                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {processLoading ? '処理中...' : 'AI処理を実行'}
+                {processLoading ? '処理中...' : `フラグメントを処理 (${unprocessedCount})`}
               </button>
               
               {processResult && (
-                <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-md">
-                  <h3 className="font-semibold text-green-800 dark:text-green-400">処理完了</h3>
-                  <p className="text-green-700 dark:text-green-300">
+                <div className="mt-4 p-3 bg-green-900/50 border border-green-700 rounded-md">
+                  <p className="text-sm text-green-300">
                     {processResult.documents.length}個のドキュメントが作成/更新されました
                   </p>
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          {/* 右側: ドキュメント一覧 + 詳細 */}
-          <div className="space-y-6">
-            
-            {/* ドキュメント一覧セクション */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">ドキュメント一覧</h2>
-                <button
-                  onClick={() => setShowSearch(!showSearch)}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  {showSearch ? '検索を隠す' : '検索・フィルター'}
-                </button>
+        {/* ドキュメント一覧 */}
+        <div className="mt-8">
+          <div className="bg-gray-800 rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">ドキュメント</h2>
+              <div className="flex items-center space-x-4">
+                <input
+                  type="text"
+                  placeholder="検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-3 py-2 border border-gray-600 rounded-md text-sm bg-gray-700 text-white placeholder-gray-400"
+                />
+                {(searchQuery || selectedTagIds.length > 0) && (
+                  <button
+                    onClick={handleResetSearch}
+                    className="text-sm text-gray-400 hover:text-gray-200"
+                  >
+                    リセット
+                  </button>
+                )}
               </div>
+            </div>
 
-              {/* 検索・フィルター UI */}
-              {showSearch && (
-                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-md space-y-3">
-                  {/* 検索ボックス */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      検索
-                    </label>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="タイトル、内容、要約を検索..."
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-
-                  {/* タグフィルター */}
-                  {tags.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        タグフィルター
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag) => (
-                          <button
-                            key={tag.id}
-                            onClick={() => handleTagToggle(tag.id)}
-                            className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                              selectedTagIds.includes(tag.id)
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
-                            }`}
-                          >
-                            {tag.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* リセットボタン */}
-                  {(searchQuery.trim() || selectedTagIds.length > 0) && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {documents.length}件のドキュメントが見つかりました
-                      </span>
-                      <button
-                        onClick={handleResetSearch}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        検索をリセット
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {documents.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                  ドキュメントがありません
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      onClick={() => handleDocumentClick(doc)}
-                      className="p-3 rounded-md cursor-pointer transition-colors bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
+            {/* タグフィルター */}
+            {tags.length > 0 && (
+              <div className="mb-6">
+                <p className="text-sm text-gray-300 mb-2">タグでフィルター:</p>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(tag => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleTagToggle(tag.id)}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        selectedTagIds.includes(tag.id)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
                     >
-                      <h3 className="font-medium text-sm text-gray-900 dark:text-white">{doc.title}</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {new Date(doc.updatedAt).toLocaleDateString('ja-JP')} • 新しいタブで開く
-                      </p>
-                    </div>
+                      {tag.name}
+                    </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ドキュメントリスト */}
+            <div className="space-y-4">
+              {documents.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">ドキュメントがありません</p>
+              ) : (
+                documents.map(doc => (
+                  <div
+                    key={doc.id}
+                    onClick={() => handleDocumentClick(doc)}
+                    className="p-4 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors"
+                  >
+                    <h3 className="font-medium text-white mb-2">{doc.title}</h3>
+                    <p className="text-sm text-gray-300 mb-2">{doc.summary}</p>
+                    <p className="text-xs text-gray-400">
+                      作成: {new Date(doc.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

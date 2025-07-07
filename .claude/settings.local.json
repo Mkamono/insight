@@ -22,7 +22,13 @@
       "Bash(GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_API_KEY node dist/cli/index.js fragment list)",
       "Bash(rm:*)",
       "Bash(GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_API_KEY node dist/cli/index.js ai generate-document 4)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(mise run cli reset:*)",
+      "Bash(mise run build:*)",
+      "Bash(sqlite3:*)",
+      "Bash(pnpm run:*)",
+      "Bash(mise run:*)",
+      "Bash(npx next lint:*)"
     ],
     "deny": []
   }

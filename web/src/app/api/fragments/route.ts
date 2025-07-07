@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FragmentService } from 'core';
+import { findAllFragments, createFragment, findRootFragments, findFragmentWithChildren, findUnprocessedFragments } from 'core';
 
-const fragmentService = new FragmentService();
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const fragments = await fragmentService.findAll();
+    const { searchParams } = new URL(request.url);
+    const parentId = searchParams.get('parentId');
+    const withChildren = searchParams.get('withChildren') === 'true';
+    const rootOnly = searchParams.get('rootOnly') === 'true';
+    const unprocessed = searchParams.get('unprocessed') === 'true';
+    
+    if (unprocessed) {
+      const fragments = await findUnprocessedFragments();
+      return NextResponse.json(fragments);
+    }
+    
+    if (rootOnly) {
+      const fragments = await findRootFragments();
+      return NextResponse.json(fragments);
+    }
+    
+    if (parentId && withChildren) {
+      const fragment = await findFragmentWithChildren(parseInt(parentId));
+      return NextResponse.json(fragment);
+    }
+    
+    const fragments = await findAllFragments();
     return NextResponse.json(fragments);
   } catch (error) {
     console.error('Error fetching fragments:', error);
@@ -22,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const fragment = await fragmentService.create({
+    const fragment = await createFragment({
       content,
       url: url || null,
       imagePath: imagePath || null,

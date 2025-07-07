@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DocumentService } from 'core';
-
-const documentService = new DocumentService();
+import { findDocumentById, getTagsByDocumentId, getFragmentsByDocumentId } from 'core';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,7 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Invalid document ID' }, { status: 400 });
     }
 
-    const document = await documentService.findById(id);
+    const document = await findDocumentById(id);
     
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
@@ -19,8 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // ドキュメントに関連するタグとフラグメントを取得
     const [tags, fragments] = await Promise.all([
-      documentService.getTagsByDocumentId(id),
-      documentService.getFragmentsByDocumentId(id)
+      getTagsByDocumentId(id),
+      getFragmentsByDocumentId(id)
     ]);
 
     return NextResponse.json({

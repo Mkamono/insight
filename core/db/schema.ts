@@ -6,12 +6,10 @@ export const fragments = sqliteTable('fragments', {
   content: text('content').notNull(),
   url: text('url'),
   imagePath: text('image_path'),
-  processed: integer('processed', { mode: 'boolean' }).default(false),
   parentId: integer('parent_id'),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 }, (table) => ({
-  processedIdx: index('fragments_processed_idx').on(table.processed),
   parentIdIdx: index('fragments_parent_id_idx').on(table.parentId),
   createdAtIdx: index('fragments_created_at_idx').on(table.createdAt),
 }));
@@ -41,9 +39,17 @@ export const tags = sqliteTable('tags', {
 export const questions = sqliteTable('questions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   content: text('content').notNull(),
+  context: text('context'), // どのような文脈で質問が生成されたか
+  documentId: integer('document_id'), // 関連するドキュメント（任意）
+  fragmentId: integer('fragment_id'), // 関連するフラグメント（任意）
+  status: text('status').notNull().default('pending'), // pending, answered, dismissed
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  statusIdx: index('questions_status_idx').on(table.status),
+  createdAtIdx: index('questions_created_at_idx').on(table.createdAt),
+}));
+
 
 export const fragmentDocuments = sqliteTable('fragment_documents', {
   fragmentId: integer('fragment_id').notNull().references(() => fragments.id, { onDelete: 'cascade' }),
@@ -75,6 +81,17 @@ export const documentsRelations = relations(documents, ({ many }) => ({
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   documentTags: many(documentTags),
+}));
+
+export const questionsRelations = relations(questions, ({ one }) => ({
+  document: one(documents, {
+    fields: [questions.documentId],
+    references: [documents.id],
+  }),
+  fragment: one(fragments, {
+    fields: [questions.fragmentId],
+    references: [fragments.id],
+  }),
 }));
 
 export const fragmentDocumentsRelations = relations(fragmentDocuments, ({ one }) => ({

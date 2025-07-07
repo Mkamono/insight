@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DocumentService } from 'core';
-
-const documentService = new DocumentService();
+import { searchDocuments } from 'core';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +12,7 @@ export async function GET(request: NextRequest) {
       tagIds = tagIdsParam.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
     }
 
-    const documents = await documentService.searchDocuments({
+    const documents = await searchDocuments({
       query: query || undefined,
       tagIds: tagIds.length > 0 ? tagIds : undefined,
     });

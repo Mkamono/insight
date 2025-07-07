@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { DocumentService } from 'core';
-
-const documentService = new DocumentService();
+import { findAllDocuments } from 'core';
 
 export async function GET() {
   try {
-    const documents = await documentService.findAll();
+    const documents = await findAllDocuments();
     return NextResponse.json(documents);
   } catch (error) {
     console.error('Error fetching documents:', error);
