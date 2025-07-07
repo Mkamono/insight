@@ -187,7 +187,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 右カラム: 統計とAI処理 */}
+          {/* 右カラム: 統計、AI処理、ドキュメント一覧 */}
           <div className="space-y-6">
             {/* 統計カード */}
             <div className="bg-gray-800 rounded-lg shadow-sm p-6">
@@ -227,74 +227,72 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* ドキュメント一覧 */}
-        <div className="mt-8">
-          <div className="bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">ドキュメント</h2>
-              <div className="flex items-center space-x-4">
-                <input
-                  type="text"
-                  placeholder="検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-3 py-2 border border-gray-600 rounded-md text-sm bg-gray-700 text-white placeholder-gray-400"
-                />
-                {(searchQuery || selectedTagIds.length > 0) && (
-                  <button
-                    onClick={handleResetSearch}
-                    className="text-sm text-gray-400 hover:text-gray-200"
-                  >
-                    リセット
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* タグフィルター */}
-            {tags.length > 0 && (
-              <div className="mb-6">
-                <p className="text-sm text-gray-300 mb-2">タグでフィルター:</p>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map(tag => (
+            {/* ドキュメント一覧カード */}
+            <div className="bg-gray-800 rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">ドキュメント</h3>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="px-2 py-1 border border-gray-600 rounded text-xs bg-gray-700 text-white placeholder-gray-400 w-24"
+                  />
+                  {(searchQuery || selectedTagIds.length > 0) && (
                     <button
-                      key={tag.id}
-                      onClick={() => handleTagToggle(tag.id)}
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        selectedTagIds.includes(tag.id)
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
+                      onClick={handleResetSearch}
+                      className="text-xs text-gray-400 hover:text-gray-200"
                     >
-                      {tag.name}
+                      リセット
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* ドキュメントリスト */}
-            <div className="space-y-4">
-              {documents.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">ドキュメントがありません</p>
-              ) : (
-                documents.map(doc => (
-                  <div
-                    key={doc.id}
-                    onClick={() => handleDocumentClick(doc)}
-                    className="p-4 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors"
-                  >
-                    <h3 className="font-medium text-white mb-2">{doc.title}</h3>
-                    <p className="text-sm text-gray-300 mb-2">{doc.summary}</p>
-                    <p className="text-xs text-gray-400">
-                      作成: {new Date(doc.createdAt).toLocaleString()}
-                    </p>
+              {/* タグフィルター */}
+              {tags.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-300 mb-2">タグでフィルター:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {tags.map(tag => (
+                      <button
+                        key={tag.id}
+                        onClick={() => handleTagToggle(tag.id)}
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          selectedTagIds.includes(tag.id)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
                   </div>
-                ))
+                </div>
               )}
+
+              {/* ドキュメントリスト */}
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {documents.length === 0 ? (
+                  <p className="text-gray-400 text-center py-4 text-sm">ドキュメントがありません</p>
+                ) : (
+                  documents.map(doc => (
+                    <div
+                      key={doc.id}
+                      onClick={() => handleDocumentClick(doc)}
+                      className="p-3 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors"
+                    >
+                      <h4 className="font-medium text-white mb-1 text-sm">{doc.title}</h4>
+                      <p className="text-xs text-gray-300 mb-1 line-clamp-2">{doc.summary}</p>
+                      <p className="text-xs text-gray-400">
+                        作成: {new Date(doc.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

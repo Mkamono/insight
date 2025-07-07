@@ -79,12 +79,19 @@ ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
 3. 会話の内容が既存ドキュメントと関連する場合は更新を、新しいトピックの場合は新規作成してください
 4. **スレッド内の全フラグメントID**をfragmentIdsに含めてください（会話全体を文書化するため）
 5. ドキュメントの内容は会話の流れを反映し、質問→回答、問題→解決策などの構造を明確にしてください
-6. **情報が不足している場合**: 
-   - フラグメントの内容が曖昧、不完全、または詳細が欠けている場合
-   - ドキュメント化に必要な重要情報が明らかに不足している場合
-   - createQuestionツールを使ってユーザーに具体的な質問を作成してください
-7. 適切なタグも提案してください
-8. **重要**: contentパラメータはMarkdown形式で記述してください（見出し、リスト、強調などを使用）
+6. **必須：ドキュメント作成**: 
+   - どんなに情報が少なくても、必ずドキュメントを作成してください
+   - "test"のような短い内容でも記録する価値があります
+   - 情報不足でもドキュメント作成を怠ってはいけません
+7. **オプション：追加質問**: 
+   - ドキュメント作成後に、より詳しい情報が欲しい場合のみcreateQuestionを使用
+   - 質問は追加情報収集のためのツールです
+8. 適切なタグも提案してください
+9. **重要**: contentパラメータはMarkdown形式で記述してください（見出し、リスト、強調などを使用）
+
+処理フロー：
+1. まず必ずcreateDocument または updateDocument を実行
+2. その後、必要に応じてcreateQuestion で追加情報を求める
 
 処理例:
 - createDocument(title: "Python概要", content: "# Python\n\n## 特徴\n- 可読性に優れている\n- 動的型付け\n\n## 用途\nWebアプリケーション開発等", summary: "...", tags: [...], fragmentIds: [1, 2])
@@ -93,10 +100,13 @@ ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
 - getDocumentDetail: 特定ドキュメントの詳細を取得
 - createDocument: 新しいドキュメントを作成（content=Markdown形式、fragmentIds必須）
 - updateDocument: 既存ドキュメントを更新（content=Markdown形式、fragmentIds必須）
-- createQuestion: 情報が不足している場合にユーザーに質問を作成（詳細な情報収集のため）
+- createQuestion: ドキュメント作成後の追加情報収集用（オプション）
 `;
 
-  await generateText({
+  console.log('AI処理開始 - フラグメント数:', ids.length);
+  console.log('プロンプト:', prompt.substring(0, 200) + '...');
+  
+  const result = await generateText({
     model,
     prompt,
     tools: {
@@ -106,6 +116,16 @@ ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
       createQuestion: createQuestionTool,
     },
     maxSteps: 20,
+  });
+  
+  console.log('AI処理完了 - 実行ステップ数:', result.steps.length);
+  console.log('ツール使用回数:', result.steps.filter(step => step.toolCalls && step.toolCalls.length > 0).length);
+  result.steps.forEach((step, index) => {
+    if (step.toolCalls && step.toolCalls.length > 0) {
+      step.toolCalls.forEach(toolCall => {
+        console.log(`ステップ ${index + 1}: ${toolCall.toolName} が実行されました`);
+      });
+    }
   });
 
   // 処理されたドキュメントを取得

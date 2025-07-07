@@ -21,6 +21,8 @@ export default function TwitterLikeInterface({ onFragmentCreate }: TwitterLikeIn
   const [fragments, setFragments] = useState<Fragment[]>([]);
   const [loading, setLoading] = useState(false);
   const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchRootFragments();
@@ -83,6 +85,7 @@ export default function TwitterLikeInterface({ onFragmentCreate }: TwitterLikeIn
         await fetchRootFragments();
 
         setReplyTo(null);
+        setCurrentPage(1); // 新しいフラグメントは最初のページに表示
       }
     } catch (error) {
       console.error('Error creating fragment:', error);
@@ -91,6 +94,17 @@ export default function TwitterLikeInterface({ onFragmentCreate }: TwitterLikeIn
     }
   };
 
+
+  // ページネーション計算
+  const totalPages = Math.ceil(fragments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentFragments = fragments.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setReplyTo(null); // ページ変更時は返信をクリア
+  };
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -101,9 +115,21 @@ export default function TwitterLikeInterface({ onFragmentCreate }: TwitterLikeIn
         placeholder="何について考えていますか？"
       />
 
+      {/* フラグメント統計 */}
+      {fragments.length > 0 && (
+        <div className="mt-4 text-sm text-gray-400 text-center">
+          全{fragments.length}件のフラグメント
+          {totalPages > 1 && (
+            <span className="ml-2">
+              (ページ {currentPage} / {totalPages})
+            </span>
+          )}
+        </div>
+      )}
+
       {/* フラグメント一覧 */}
       <div className="mt-6 space-y-4">
-        {fragments.map(fragment => (
+        {currentFragments.map(fragment => (
           <FragmentCard
             key={fragment.id}
             fragment={fragment}
@@ -114,6 +140,41 @@ export default function TwitterLikeInterface({ onFragmentCreate }: TwitterLikeIn
           />
         ))}
       </div>
+
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center items-center space-x-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            前
+          </button>
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`px-3 py-1 rounded ${
+                page === currentPage
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            次
+          </button>
+        </div>
+      )}
     </div>
   );
 }
