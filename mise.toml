@@ -21,7 +21,7 @@ depends = ["build"]
 
 [tasks.web]
 description = "Start web development server"
-run = "cd web && pnpm run dev"
+run = "cd web && pnpm i && pnpm run dev"
 depends = ["build"]
 
 [tasks.web-build]
