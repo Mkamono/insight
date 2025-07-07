@@ -1,5 +1,4 @@
-import { generateObject, generateText } from 'ai';
-import { z } from 'zod';
+import { generateText } from 'ai';
 import type { Document, Fragment } from '../db/index.js';
 import { getAiModel } from './aimodel.js';
 import { findFragmentById, findFragmentHierarchy, findFragmentWithChildren } from './fragmentService.js';
@@ -27,20 +26,24 @@ export async function generateDocumentFromFragment(fragmentIds: number | number[
       const hierarchy = await findFragmentHierarchy(id);
       const contextStr = hierarchy.map((f, index) => {
         const role = index === 0 ? '[親投稿]' : index === hierarchy.length - 1 ? '[この投稿]' : '[返信]';
-        return `${role} ID: ${f.id} - ${f.content}`;
+        const timestamp = f.createdAt ? new Date(f.createdAt).toLocaleString('ja-JP') : '日時不明';
+        return `${role} ID: ${f.id} (${timestamp}) - ${f.content}`;
       }).join('\n↓ 返信として\n');
       fragmentsWithContext.push(`会話スレッド:\n${contextStr}`);
     } else {
       // ルートフラグメントの場合、子も含めて表示
       const withChildren = await findFragmentWithChildren(id);
       if (withChildren && withChildren.children.length > 0) {
-        let contextStr = `[元投稿] ID: ${fragment.id} - ${fragment.content}`;
+        const parentTimestamp = fragment.createdAt ? new Date(fragment.createdAt).toLocaleString('ja-JP') : '日時不明';
+        let contextStr = `[元投稿] ID: ${fragment.id} (${parentTimestamp}) - ${fragment.content}`;
         withChildren.children.forEach(child => {
-          contextStr += `\n↓ 返信として\n[返信] ID: ${child.id} - ${child.content}`;
+          const childTimestamp = child.createdAt ? new Date(child.createdAt).toLocaleString('ja-JP') : '日時不明';
+          contextStr += `\n↓ 返信として\n[返信] ID: ${child.id} (${childTimestamp}) - ${child.content}`;
         });
         fragmentsWithContext.push(`会話スレッド:\n${contextStr}`);
       } else {
-        fragmentsWithContext.push(`単独投稿:\nID: ${fragment.id} - ${fragment.content}`);
+        const timestamp = fragment.createdAt ? new Date(fragment.createdAt).toLocaleString('ja-JP') : '日時不明';
+        fragmentsWithContext.push(`単独投稿:\nID: ${fragment.id} (${timestamp}) - ${fragment.content}`);
       }
     }
   }
@@ -72,6 +75,7 @@ ${existingDocsInfo.length > 0 ? existingDocsInfo.map(doc =>
 - [元投稿]は話題の発端で、[返信]はそれに対する応答です
 - 「↓ 返信として」は投稿の時系列と関係性を示します
 - スレッド全体で一つの議論や情報交換が行われています
+- **日時情報**：各フラグメントには作成日時が含まれており、情報の鮮度や時期的な文脈を判断に活用してください
 
 ## 処理指示:
 1. **会話の文脈を理解**: スレッドは投稿→返信の時系列的な会話として処理してください
