@@ -33,3 +33,17 @@ depends = ["build"]
 description = "Initialize database"
 run = "node dist/cli/index.js init"
 depends = ["build"]
+
+[tasks.migrate]
+description = "Generate drizzle migration files"
+run = "pnpm drizzle-kit generate"
+
+[tasks.reset]
+description = "Reset project - clean directories and reinitialize"
+run = [
+  "rm -rf drizzle dist knowledge",
+  "pnpm i",
+  "pnpm drizzle-kit generate", 
+  "pnpm run build",
+  "node dist/cli/index.js init"
+]
