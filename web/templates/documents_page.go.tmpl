@@ -1,0 +1,527 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Documents - Insight</title>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Documents</h1>
+
+            <div class="flex items-center space-x-4">
+                <button 
+                    id="ask-all-documents-btn" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors flex items-center space-x-2"
+                    title="Ask about all documents"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Ask Latest Documents</span>
+                </button>
+                <a href="/fragments" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                    Manage Fragments
+                </a>
+                
+                {{if .Versions}}
+                <div class="flex items-center space-x-3">
+                    <label for="version-select" class="text-sm font-medium text-gray-700">Version:</label>
+                    <select id="version-select" class="border border-gray-300 rounded-md px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        {{range .Versions}}
+                        <option value="{{.Format "2006-01-02 15:04:05.999999-07:00"}}" {{if eq ($.SelectedVersion) (.Format "2006-01-02 15:04:05.999999-07:00")}}selected{{end}}>
+                            {{.Format "2006-01-02 15:04:05"}}
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="mb-6 space-y-4">
+            <!-- Search Input -->
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search documents by title, summary, or content..." 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- Tag Filter -->
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-gray-700">Filter by tags:</span>
+                <button id="clear-tags-btn" class="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full transition-colors hidden">
+                    Clear All
+                </button>
+                <div id="available-tags" class="flex flex-wrap gap-2">
+                    <!-- タグは JavaScript で動的に生成 -->
+                </div>
+            </div>
+            
+            <div id="search-results-count" class="text-sm text-gray-600 hidden"></div>
+        </div>
+
+        <div id="documents-container" class="grid gap-6">
+            {{range .Documents}}
+            <a href="/documents/{{.ID}}" class="document-card block bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:bg-gray-50 cursor-pointer group" 
+               data-title="{{.Title}}" 
+               data-summary="{{.Summary}}"
+               data-content="{{.Content}}"
+               data-tags="{{range $i, $tag := .Tags}}{{if $i}},{{end}}{{$tag.Name}}{{end}}">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">
+                    {{.Title}}
+                </h2>
+                <p class="text-gray-600 mb-4">{{.Summary}}</p>
+                
+                {{if .Tags}}
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {{range .Tags}}
+                    <span class="tag-chip inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-80 transition-opacity" 
+                          style="background-color: {{.Color}}" 
+                          data-tag-name="{{.Name}}"
+                          data-tag-color="{{.Color}}"
+                          title="Click to filter by this tag">
+                        {{.Name}}
+                    </span>
+                    {{end}}
+                </div>
+                {{end}}
+                
+                <div class="text-sm text-gray-500">
+                    Created: {{.CreatedAt.Format "2006-01-02 15:04:05"}}
+                </div>
+            </a>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- Global Question Modal -->
+    <div id="global-question-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Ask about latest documents</h3>
+                    <button id="close-global-modal-btn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="global-question-form" class="space-y-4">
+                    <div>
+                        <label for="global-question-input" class="block text-sm font-medium text-gray-700 mb-2">Your Question</label>
+                        <textarea 
+                            id="global-question-input" 
+                            name="question"
+                            rows="4" 
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="Ask anything about the latest version of your documents..."
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            id="global-web-search-checkbox" 
+                            name="web_search"
+                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            checked
+                        >
+                        <label for="global-web-search-checkbox" class="ml-2 block text-sm text-gray-900">
+                            Enable web search for additional context
+                        </label>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button 
+                            type="button" 
+                            id="global-cancel-btn"
+                            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            id="submit-global-question-btn"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors flex items-center space-x-2"
+                        >
+                            <span>Ask Question</span>
+                            <svg class="w-4 h-4 hidden" id="global-loading-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Answer Section -->
+                <div id="global-answer-section" class="hidden mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Answer</h4>
+                    <div id="global-answer-content" class="bg-gray-50 rounded-md p-4 text-gray-700 markdown-content"></div>
+                    <div id="global-sources-section" class="mt-4">
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Sources</h5>
+                        <ul id="global-sources-list" class="text-sm text-gray-600 space-y-1"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Version selector
+        const versionSelect = document.getElementById('version-select');
+        if (versionSelect) {
+            versionSelect.addEventListener('change', function() {
+                const selectedVersion = this.value;
+                const url = new URL(window.location);
+                url.searchParams.set('version', selectedVersion);
+                window.location.href = url.toString();
+            });
+        }
+
+        // Filter and search state
+        const searchInput = document.getElementById('search-input');
+        const searchResultsCount = document.getElementById('search-results-count');
+        const documentsContainer = document.getElementById('documents-container');
+        const documentCards = document.querySelectorAll('.document-card');
+        const availableTagsContainer = document.getElementById('available-tags');
+        const clearTagsBtn = document.getElementById('clear-tags-btn');
+        
+        let selectedTags = new Set();
+        let allTags = new Map(); // tag name -> { name, color, count }
+
+        // Extract all unique tags from document cards
+        function extractAllTags() {
+            documentCards.forEach(card => {
+                const tagsData = card.getAttribute('data-tags');
+                if (tagsData && tagsData.trim()) {
+                    const tags = tagsData.split(',').filter(tag => tag.trim());
+                    tags.forEach(tagName => {
+                        const trimmedTag = tagName.trim();
+                        if (trimmedTag && !allTags.has(trimmedTag)) {
+                            // タグの色は document card 内の span から取得
+                            let color = '#6B7280'; // デフォルトの色
+                            
+                            // カード内のタグspanを探して色を取得
+                            const tagSpans = card.querySelectorAll('.flex.flex-wrap.gap-2 span');
+                            tagSpans.forEach(span => {
+                                if (span.textContent.trim() === trimmedTag) {
+                                    const style = span.getAttribute('style');
+                                    if (style && style.includes('background-color:')) {
+                                        const colorMatch = style.match(/background-color:\s*([^;]+)/);
+                                        if (colorMatch) {
+                                            color = colorMatch[1].trim();
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            allTags.set(trimmedTag, { name: trimmedTag, color: color, count: 0 });
+                        }
+                        if (allTags.has(trimmedTag)) {
+                            allTags.get(trimmedTag).count++;
+                        }
+                    });
+                }
+            });
+            
+            console.log('Extracted tags:', allTags); // デバッグ用
+        }
+
+        // Render available tags
+        function renderAvailableTags() {
+            availableTagsContainer.innerHTML = '';
+            
+            // Sort tags by count (descending) then by name
+            const sortedTags = Array.from(allTags.values()).sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                return a.name.localeCompare(b.name);
+            });
+            
+            sortedTags.forEach(tag => {
+                const button = document.createElement('button');
+                button.className = `tag-filter px-3 py-1 text-xs rounded-full transition-all duration-200 ${
+                    selectedTags.has(tag.name) 
+                        ? 'text-white shadow-md transform scale-105' 
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`;
+                
+                if (selectedTags.has(tag.name)) {
+                    button.style.backgroundColor = tag.color;
+                }
+                
+                button.textContent = `${tag.name} (${tag.count})`;
+                button.setAttribute('data-tag', tag.name);
+                button.setAttribute('data-color', tag.color);
+                
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    toggleTag(tag.name);
+                });
+                
+                availableTagsContainer.appendChild(button);
+            });
+        }
+
+        // Toggle tag selection
+        function toggleTag(tagName) {
+            if (selectedTags.has(tagName)) {
+                selectedTags.delete(tagName);
+            } else {
+                selectedTags.add(tagName);
+            }
+            
+            // Update UI
+            renderAvailableTags();
+            updateClearButton();
+            performFilter();
+        }
+
+        // Update clear button visibility
+        function updateClearButton() {
+            if (selectedTags.size > 0) {
+                clearTagsBtn.classList.remove('hidden');
+            } else {
+                clearTagsBtn.classList.add('hidden');
+            }
+        }
+
+        // Clear all selected tags
+        clearTagsBtn.addEventListener('click', () => {
+            selectedTags.clear();
+            renderAvailableTags();
+            updateClearButton();
+            performFilter();
+        });
+
+        // Combined search and tag filtering
+        function performFilter() {
+            const query = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+            
+            documentCards.forEach(card => {
+                const title = card.getAttribute('data-title').toLowerCase();
+                const summary = card.getAttribute('data-summary').toLowerCase();
+                const content = card.getAttribute('data-content').toLowerCase();
+                const cardTags = card.getAttribute('data-tags') || '';
+                const cardTagList = cardTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                
+                // Search query match
+                const searchMatch = query === '' || 
+                    title.includes(query) || 
+                    summary.includes(query) || 
+                    content.includes(query);
+                
+                // Tag filter match (if tags are selected)
+                const tagMatch = selectedTags.size === 0 || 
+                    Array.from(selectedTags).some(selectedTag => 
+                        cardTagList.includes(selectedTag)
+                    );
+                
+                if (searchMatch && tagMatch) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update results count
+            if (query !== '' || selectedTags.size > 0) {
+                let message = `${visibleCount} documents found`;
+                if (query !== '') message += ` for "${searchInput.value}"`;
+                if (selectedTags.size > 0) {
+                    const tagList = Array.from(selectedTags).join(', ');
+                    message += ` with tags: ${tagList}`;
+                }
+                searchResultsCount.textContent = message;
+                searchResultsCount.classList.remove('hidden');
+            } else {
+                searchResultsCount.classList.add('hidden');
+            }
+        }
+
+        // Real-time search
+        searchInput.addEventListener('input', performFilter);
+        
+        // Tag chip click functionality
+        function initTagChipClickHandlers() {
+            const tagChips = document.querySelectorAll('.tag-chip');
+            tagChips.forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // ドキュメントカードのクリックを防ぐ
+                    
+                    const tagName = chip.getAttribute('data-tag-name');
+                    const tagColor = chip.getAttribute('data-tag-color');
+                    
+                    if (tagName && !selectedTags.has(tagName)) {
+                        // タグが選択されていない場合は選択
+                        selectedTags.add(tagName);
+                        
+                        // allTagsにタグが存在しない場合は追加
+                        if (!allTags.has(tagName)) {
+                            allTags.set(tagName, { name: tagName, color: tagColor, count: 1 });
+                        }
+                        
+                        // UIを更新
+                        renderAvailableTags();
+                        updateClearButton();
+                        performFilter();
+                        
+                        // 視覚的フィードバック
+                        chip.style.transform = 'scale(1.1)';
+                        setTimeout(() => {
+                            chip.style.transform = 'scale(1)';
+                        }, 150);
+                    }
+                });
+            });
+        }
+
+        // Initialize
+        extractAllTags();
+        renderAvailableTags();
+        updateClearButton();
+        searchResultsCount.classList.add('hidden');
+        initTagChipClickHandlers();
+
+        // Global Question Modal functionality
+        const askAllDocumentsBtn = document.getElementById('ask-all-documents-btn');
+        const globalQuestionModal = document.getElementById('global-question-modal');
+        const closeGlobalModalBtn = document.getElementById('close-global-modal-btn');
+        const globalCancelBtn = document.getElementById('global-cancel-btn');
+        const globalQuestionForm = document.getElementById('global-question-form');
+        const globalQuestionInput = document.getElementById('global-question-input');
+        const globalWebSearchCheckbox = document.getElementById('global-web-search-checkbox');
+        const submitGlobalBtn = document.getElementById('submit-global-question-btn');
+        const globalLoadingSpinner = document.getElementById('global-loading-spinner');
+        const globalAnswerSection = document.getElementById('global-answer-section');
+        const globalAnswerContent = document.getElementById('global-answer-content');
+        const globalSourcesList = document.getElementById('global-sources-list');
+
+        // Open global modal
+        askAllDocumentsBtn.addEventListener('click', function() {
+            globalQuestionModal.classList.remove('hidden');
+            globalQuestionInput.focus();
+            // Reset form
+            globalQuestionForm.reset();
+            globalWebSearchCheckbox.checked = true; // Default to enabled
+            globalAnswerSection.classList.add('hidden');
+        });
+
+        // Close global modal
+        function closeGlobalModal() {
+            globalQuestionModal.classList.add('hidden');
+            globalQuestionForm.reset();
+            globalAnswerSection.classList.add('hidden');
+        }
+
+        closeGlobalModalBtn.addEventListener('click', closeGlobalModal);
+        globalCancelBtn.addEventListener('click', closeGlobalModal);
+
+        // Close modal when clicking outside
+        globalQuestionModal.addEventListener('click', function(e) {
+            if (e.target === globalQuestionModal) {
+                closeGlobalModal();
+            }
+        });
+
+        // Submit global question
+        globalQuestionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const question = globalQuestionInput.value.trim();
+            if (!question) return;
+
+            // Show loading state
+            const submitBtnSpan = submitGlobalBtn.querySelector('span');
+            submitBtnSpan.textContent = 'Processing...';
+            globalLoadingSpinner.classList.remove('hidden');
+            submitGlobalBtn.disabled = true;
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('question', question);
+                formData.append('web_search', globalWebSearchCheckbox.checked ? 'true' : 'false');
+
+                const response = await fetch('/api/documents/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Display answer with markdown parsing
+                globalAnswerContent.innerHTML = parseMarkdownToHTML(result.answer);
+                
+                // Display sources
+                globalSourcesList.innerHTML = '';
+                result.sources.forEach(source => {
+                    const li = document.createElement('li');
+                    li.textContent = `• ${source}`;
+                    globalSourcesList.appendChild(li);
+                });
+
+                globalAnswerSection.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error:', error);
+                globalAnswerContent.textContent = 'Sorry, there was an error processing your question. Please try again.';
+                globalAnswerContent.className = 'bg-red-50 rounded-md p-4 text-red-700 markdown-content';
+                globalSourcesList.innerHTML = '';
+                globalAnswerSection.classList.remove('hidden');
+            } finally {
+                // Reset loading state
+                submitBtnSpan.textContent = 'Ask Question';
+                globalLoadingSpinner.classList.add('hidden');
+                submitGlobalBtn.disabled = false;
+                globalAnswerContent.className = 'bg-gray-50 rounded-md p-4 text-gray-700 markdown-content';
+            }
+        });
+
+        // Enable Enter+Shift to submit global question
+        globalQuestionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                globalQuestionForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Simple markdown to HTML parser
+        function parseMarkdownToHTML(markdown) {
+            return markdown
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')             // Italic
+                .replace(/`(.*?)`/g, '<code>$1</code>')           // Inline code
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>') // Code blocks
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')         // H3
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')          // H2
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')           // H1
+                .replace(/^\* (.*$)/gim, '<li>$1</li>')          // List items
+                .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')       // Wrap lists
+                .replace(/\n/g, '<br>');                         // Line breaks
+        }
+    </script>
+</body>
+</html>

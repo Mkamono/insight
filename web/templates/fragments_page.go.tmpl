@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Fragments - Insight</title>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Fragments</h1>
+            <div class="flex space-x-4">
+                <a href="/documents" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">
+                    View Documents
+                </a>
+                <button id="ai-compress-btn" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md transition-colors">
+                    Compress Fragments
+                </button>
+                <button id="ai-generate-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+                    Generate Documents with AI
+                </button>
+            </div>
+        </div>
+
+        <!-- Fragment Creation Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Add New Fragment</h2>
+            <form id="fragment-form" method="POST" action="/fragments">
+                <div class="mb-4">
+                    <label for="content" class="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <textarea 
+                        id="content" 
+                        name="content" 
+                        rows="4" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter fragment content... (Cmd+Enter to submit)"
+                        required
+                    ></textarea>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                    Add Fragment
+                </button>
+            </form>
+        </div>
+
+        <!-- Fragments List -->
+        <div class="grid gap-4">
+            {{range .Fragments}}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm text-gray-500">Fragment ID: {{.ID}}</span>
+                    <span class="text-sm text-gray-500">{{.CreatedAt.Format "2006-01-02 15:04:05"}}</span>
+                </div>
+                <p class="text-gray-800 leading-relaxed mb-3">{{.Content}}</p>
+                
+                {{if .Tags}}
+                <div class="flex flex-wrap gap-2">
+                    {{range .Tags}}
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white" style="background-color: {{.Color}}">
+                        {{.Name}}
+                    </span>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="bg-white rounded-lg shadow-md p-6 text-center">
+                <p class="text-gray-500">No fragments found. Add your first fragment above!</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <script>
+        // AI Compress button functionality
+        document.getElementById('ai-compress-btn').addEventListener('click', function() {
+            const button = this;
+            const originalText = button.textContent;
+            
+            // 確認ダイアログ
+            if (!confirm('This will analyze and compress fragments by merging similar ones and removing low-value ones. Continue?')) {
+                return;
+            }
+            
+            // ボタンを無効化
+            button.disabled = true;
+            button.textContent = 'Compressing...';
+            button.classList.add('opacity-50');
+            
+            fetch('/api/ai/compress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Fragments compressed successfully!');
+                    // ページをリロードして結果を表示
+                    window.location.reload();
+                } else {
+                    alert('Failed to compress fragments: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to compress fragments. Please try again.');
+            })
+            .finally(() => {
+                // ボタンを元に戻す
+                button.disabled = false;
+                button.textContent = originalText;
+                button.classList.remove('opacity-50');
+            });
+        });
+
+        // AI Generate button functionality
+        document.getElementById('ai-generate-btn').addEventListener('click', function() {
+            const button = this;
+            const originalText = button.textContent;
+            
+            // ボタンを無効化
+            button.disabled = true;
+            button.textContent = 'Generating...';
+            button.classList.add('opacity-50');
+            
+            fetch('/api/ai/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Documents generated successfully!');
+                    // ドキュメント一覧ページにリダイレクト
+                    window.location.href = '/documents';
+                } else {
+                    alert('Failed to generate documents: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate documents. Please try again.');
+            })
+            .finally(() => {
+                // ボタンを元に戻す
+                button.disabled = false;
+                button.textContent = originalText;
+                button.classList.remove('opacity-50');
+            });
+        });
+
+        // Fragment form keyboard shortcut (Cmd+Enter)
+        document.getElementById('content').addEventListener('keydown', function(event) {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                event.preventDefault();
+                
+                // フォームをAjaxで送信
+                const content = document.getElementById('content').value;
+                
+                if (!content.trim()) {
+                    return;
+                }
+                
+                // HTMLフォームと同じapplication/x-www-form-urlencoded形式で送信
+                const params = new URLSearchParams();
+                params.append('content', content);
+                
+                fetch('/fragments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // 成功時：フィールドをクリアしてフォーカスを維持
+                        document.getElementById('content').value = '';
+                        document.getElementById('content').focus();
+                        // ページをリロードして新しいフラグメントを表示
+                        window.location.reload();
+                    } else {
+                        alert('Failed to create fragment');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to create fragment');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

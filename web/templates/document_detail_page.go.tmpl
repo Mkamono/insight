@@ -1,0 +1,348 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/markdown.css">
+    <title>{{.Title}} - Insight</title>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-6">
+            <a href="/documents" class="text-blue-600 hover:text-blue-800 transition-colors">← Back to Documents</a>
+        </div>
+        
+        <article class="bg-white rounded-lg shadow-md p-8">
+            <header class="mb-8">
+                <div class="flex justify-between items-start mb-4">
+                    <h1 class="text-3xl font-bold text-gray-900">{{.Title}}</h1>
+                    <div class="flex space-x-3">
+                        <button 
+                            id="ask-document-btn" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors flex items-center space-x-2"
+                            title="Ask about this document"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Ask about this document</span>
+                        </button>
+                        <button 
+                            id="copy-markdown-btn" 
+                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors flex items-center space-x-2"
+                            title="Copy Markdown content"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>Copy Markdown</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500 mb-4">
+                    Created: {{.CreatedAt.Format "2006-01-02 15:04:05"}} | 
+                    Updated: {{.UpdatedAt.Format "2006-01-02 15:04:05"}}
+                </div>
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                    <p class="text-gray-700">{{.Summary}}</p>
+                </div>
+                
+                {{if .Tags}}
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {{range .Tags}}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white" style="background-color: {{.Color}}">
+                        {{.Name}}
+                    </span>
+                    {{end}}
+                </div>
+                {{end}}
+            </header>
+            
+            <div class="markdown-content max-w-none">
+                {{.ContentHTML}}
+            </div>
+            
+            {{if .Fragments}}
+            <footer class="mt-8 pt-8 border-t border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Related Fragments ({{len .Fragments}})</h3>
+                <div class="grid gap-4">
+                    {{range .Fragments}}
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <p class="text-gray-700">{{.Content}}</p>
+                        <div class="text-xs text-gray-500 mt-2">
+                            Fragment ID: {{.ID}} | Created: {{.CreatedAt.Format "2006-01-02 15:04:05"}}
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </footer>
+            {{end}}
+        </article>
+    </div>
+
+    <!-- Question Modal -->
+    <div id="question-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Ask about this document</h3>
+                    <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="question-form" class="space-y-4">
+                    <div>
+                        <label for="question-input" class="block text-sm font-medium text-gray-700 mb-2">Your Question</label>
+                        <textarea 
+                            id="question-input" 
+                            name="question"
+                            rows="4" 
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Ask anything about this document..."
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            id="web-search-checkbox" 
+                            name="web_search"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            checked
+                        >
+                        <label for="web-search-checkbox" class="ml-2 block text-sm text-gray-900">
+                            Enable web search for additional context
+                        </label>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button 
+                            type="button" 
+                            id="cancel-btn"
+                            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            id="submit-question-btn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center space-x-2"
+                        >
+                            <span>Ask Question</span>
+                            <svg class="w-4 h-4 hidden" id="loading-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Answer Section -->
+                <div id="answer-section" class="hidden mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Answer</h4>
+                    <div id="answer-content" class="bg-gray-50 rounded-md p-4 text-gray-700 markdown-content"></div>
+                    <div id="sources-section" class="mt-4">
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Sources</h5>
+                        <ul id="sources-list" class="text-sm text-gray-600 space-y-1"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Copy Markdown functionality
+        document.getElementById('copy-markdown-btn').addEventListener('click', function() {
+            // Markdownコンテンツを取得（テンプレートからサーバーサイドで渡される）
+            // エスケープされた改行コードを実際の改行に変換し、先頭と末尾のクオートを削除
+            let markdownContent = {{.Content | printf "%q"}};
+            markdownContent = markdownContent.replace(/\\n/g, '\n');
+            // 先頭と末尾のダブルクオートを削除
+            if (markdownContent.startsWith('"') && markdownContent.endsWith('"')) {
+                markdownContent = markdownContent.slice(1, -1);
+            }
+            
+            // クリップボードにコピー
+            navigator.clipboard.writeText(markdownContent).then(function() {
+                // 成功時のフィードバック
+                const button = document.getElementById('copy-markdown-btn');
+                const originalText = button.innerHTML;
+                
+                button.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Copied!</span>
+                `;
+                button.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                button.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                // 2秒後に元に戻す
+                setTimeout(function() {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    button.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy text: ', err);
+                alert('Failed to copy to clipboard');
+            });
+        });
+
+        // Question Modal functionality
+        const askDocumentBtn = document.getElementById('ask-document-btn');
+        const questionModal = document.getElementById('question-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const questionForm = document.getElementById('question-form');
+        const questionInput = document.getElementById('question-input');
+        const webSearchCheckbox = document.getElementById('web-search-checkbox');
+        const submitBtn = document.getElementById('submit-question-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const answerSection = document.getElementById('answer-section');
+        const answerContent = document.getElementById('answer-content');
+        const sourcesList = document.getElementById('sources-list');
+
+        // Open modal
+        askDocumentBtn.addEventListener('click', function() {
+            questionModal.classList.remove('hidden');
+            questionInput.focus();
+            // Reset form
+            questionForm.reset();
+            answerSection.classList.add('hidden');
+        });
+
+        // Close modal
+        function closeModal() {
+            questionModal.classList.add('hidden');
+            questionForm.reset();
+            answerSection.classList.add('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Close modal when clicking outside
+        questionModal.addEventListener('click', function(e) {
+            if (e.target === questionModal) {
+                closeModal();
+            }
+        });
+
+        // Submit question
+        questionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // Show loading state
+            const submitBtnSpan = submitBtn.querySelector('span');
+            submitBtnSpan.textContent = 'Processing...';
+            loadingSpinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('question', question);
+                formData.append('web_search', webSearchCheckbox.checked ? 'true' : 'false');
+
+                const response = await fetch(`/api/documents/{{.ID}}/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Display answer with markdown parsing
+                answerContent.innerHTML = parseMarkdownToHTML(result.answer);
+                
+                // Display sources
+                sourcesList.innerHTML = '';
+                result.sources.forEach(source => {
+                    const li = document.createElement('li');
+                    li.textContent = `• ${source}`;
+                    sourcesList.appendChild(li);
+                });
+
+                answerSection.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error:', error);
+                answerContent.textContent = 'Sorry, there was an error processing your question. Please try again.';
+                answerContent.className = 'bg-red-50 rounded-md p-4 text-red-700 markdown-content';
+                sourcesList.innerHTML = '';
+                answerSection.classList.remove('hidden');
+            } finally {
+                // Reset loading state
+                submitBtnSpan.textContent = 'Ask Question';
+                loadingSpinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                answerContent.className = 'bg-gray-50 rounded-md p-4 text-gray-700 markdown-content';
+            }
+        });
+
+        // Simple markdown to HTML parser for client-side rendering
+        function parseMarkdownToHTML(markdown) {
+            let html = markdown
+                // Headers
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                // Bold
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                .replace(/__(.*?)__/gim, '<strong>$1</strong>')
+                // Italic
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                .replace(/_(.*?)_/gim, '<em>$1</em>')
+                // Code blocks
+                .replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>')
+                // Inline code
+                .replace(/`(.*?)`/gim, '<code>$1</code>')
+                // Links
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
+                // Line breaks
+                .replace(/\n\n/gim, '</p><p>')
+                .replace(/\n/gim, '<br>');
+
+            // Wrap in paragraphs if not already wrapped
+            if (!html.startsWith('<h') && !html.startsWith('<p') && !html.startsWith('<pre')) {
+                html = '<p>' + html + '</p>';
+            }
+
+            // Handle lists
+            html = html.replace(/^[\s]*[-*+]\s+(.*$)/gim, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+            
+            // Handle numbered lists
+            html = html.replace(/^[\s]*\d+\.\s+(.*$)/gim, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/gs, function(match) {
+                if (match.includes('<ul>')) return match;
+                return '<ol>' + match + '</ol>';
+            });
+
+            return html;
+        }
+
+        // Enable Enter+Shift to submit
+        questionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                questionForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

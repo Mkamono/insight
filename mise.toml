@@ -1,0 +1,14 @@
+[tasks.web]
+run = "go run cmd/web/main.go"
+
+[tasks.cli]
+run = "go run cmd/cli/main.go"
+
+[tasks.migrate]
+run = "go run cmd/migrate/main.go"
+
+[tasks.reset]
+run = "rm insight.db"
+
+[tasks.format]
+run = "go fmt ./... && go mod tidy"
