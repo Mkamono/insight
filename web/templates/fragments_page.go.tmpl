@@ -50,7 +50,18 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-start mb-2">
                     <span class="text-sm text-gray-500">Fragment ID: {{.ID}}</span>
-                    <span class="text-sm text-gray-500">{{.CreatedAt.Format "2006-01-02 15:04:05"}}</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500">{{.CreatedAt.Format "2006-01-02 15:04:05"}}</span>
+                        <button 
+                            class="delete-fragment-btn text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
+                            data-fragment-id="{{.ID}}"
+                            title="Delete fragment"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <p class="text-gray-800 leading-relaxed mb-3">{{.Content}}</p>
                 
@@ -193,6 +204,67 @@
                     alert('Failed to create fragment');
                 });
             }
+        });
+
+        // Fragment deletion functionality
+        document.querySelectorAll('.delete-fragment-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const fragmentId = this.getAttribute('data-fragment-id');
+                const fragmentContent = this.closest('.bg-white').querySelector('p').textContent.trim();
+                
+                // 確認ダイアログ
+                if (!confirm(`Are you sure you want to delete this fragment?\n\nID: ${fragmentId}\nContent: ${fragmentContent.substring(0, 100)}${fragmentContent.length > 100 ? '...' : ''}`)) {
+                    return;
+                }
+                
+                // ボタンを無効化
+                this.disabled = true;
+                this.classList.add('opacity-50');
+                
+                fetch(`/fragments/${fragmentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Failed to delete fragment');
+                    }
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        // フラグメントカードを画面から削除
+                        this.closest('.bg-white').remove();
+                        
+                        // フラグメントが全て削除された場合は「No fragments found」メッセージを表示
+                        const fragmentContainer = document.querySelector('.grid.gap-4');
+                        if (fragmentContainer.children.length === 0) {
+                            fragmentContainer.innerHTML = `
+                                <div class="bg-white rounded-lg shadow-md p-6 text-center">
+                                    <p class="text-gray-500">No fragments found. Add your first fragment above!</p>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        alert('Failed to delete fragment: ' + data.message);
+                        // ボタンを元に戻す
+                        this.disabled = false;
+                        this.classList.remove('opacity-50');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete fragment. Please try again.');
+                    // ボタンを元に戻す
+                    this.disabled = false;
+                    this.classList.remove('opacity-50');
+                });
+            });
         });
     </script>
 </body>

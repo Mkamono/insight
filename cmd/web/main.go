@@ -75,6 +75,7 @@ func main() {
 	r.HandleFunc("/documents/{id}", server.handleDocumentDetail).Methods("GET")
 	r.HandleFunc("/fragments", server.handleFragments).Methods("GET")
 	r.HandleFunc("/fragments", server.handleCreateFragment).Methods("POST")
+	r.HandleFunc("/fragments/{id}", server.handleDeleteFragment).Methods("DELETE")
 	r.HandleFunc("/api/ai/create", server.handleAICreate).Methods("POST")
 	r.HandleFunc("/api/ai/compress", server.handleAICompress).Methods("POST")
 	r.HandleFunc("/api/documents/search", server.handleDocumentSearch).Methods("GET")
@@ -441,4 +442,40 @@ func (s *Server) handleGlobalDocumentAsk(w http.ResponseWriter, r *http.Request)
 	// JSON レスポンス
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func (s *Server) handleDeleteFragment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid fragment ID", http.StatusBadRequest)
+		return
+	}
+
+	// フラグメントが存在するかチェック
+	fragment, err := s.fragmentUsecase.GetFragment(uint(id))
+	if err != nil {
+		http.Error(w, "Fragment not found", http.StatusNotFound)
+		return
+	}
+
+	// 削除実行
+	err = s.fragmentUsecase.DeleteFragment(uint(id))
+	if err != nil {
+		http.Error(w, "Failed to delete fragment", http.StatusInternalServerError)
+		return
+	}
+
+	// JSON レスポンス
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Fragment deleted successfully",
+		"fragment": map[string]interface{}{
+			"id":      fragment.ID,
+			"content": fragment.Content,
+		},
+	})
 }

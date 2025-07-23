@@ -35,6 +35,23 @@ func main() {
 						},
 						Action: createFragment,
 					},
+					{
+						Name:  "list",
+						Usage: "List all fragments",
+						Action: listFragments,
+					},
+					{
+						Name:  "delete",
+						Usage: "Delete a fragment",
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:     "id",
+								Usage:    "Fragment ID to delete",
+								Required: true,
+							},
+						},
+						Action: deleteFragment,
+					},
 				},
 			},
 			{
@@ -226,6 +243,71 @@ func compressFragments(ctx context.Context, c *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to compress fragments: %w", err)
 	}
+
+	return nil
+}
+
+func listFragments(ctx context.Context, c *cli.Command) error {
+	// データベース初期化
+	database, err := db.Init(nil)
+	if err != nil {
+		return fmt.Errorf("failed to initialize database: %w", err)
+	}
+	defer db.Close(database)
+
+	// フラグメント取得
+	fragmentUsecase := usecase.NewFragmentUsecase(database)
+	fragments, err := fragmentUsecase.GetAllFragments()
+	if err != nil {
+		return fmt.Errorf("failed to get fragments: %w", err)
+	}
+
+	if len(fragments) == 0 {
+		fmt.Println("No fragments found.")
+		return nil
+	}
+
+	fmt.Printf("Found %d fragments:\n\n", len(fragments))
+	for _, fragment := range fragments {
+		fmt.Printf("ID: %d\n", fragment.ID)
+		fmt.Printf("Content: %s\n", fragment.Content)
+		fmt.Printf("Created: %s\n", fragment.CreatedAt.Format("2006-01-02 15:04:05"))
+		fmt.Println("---")
+	}
+
+	return nil
+}
+
+func deleteFragment(ctx context.Context, c *cli.Command) error {
+	id := c.Int("id")
+	if id <= 0 {
+		return fmt.Errorf("invalid fragment ID: %d", id)
+	}
+
+	// データベース初期化
+	database, err := db.Init(nil)
+	if err != nil {
+		return fmt.Errorf("failed to initialize database: %w", err)
+	}
+	defer db.Close(database)
+
+	fragmentUsecase := usecase.NewFragmentUsecase(database)
+
+	// フラグメントが存在するかチェック
+	fragment, err := fragmentUsecase.GetFragment(uint(id))
+	if err != nil {
+		return fmt.Errorf("fragment with ID %d not found", id)
+	}
+
+	// 削除実行
+	err = fragmentUsecase.DeleteFragment(uint(id))
+	if err != nil {
+		return fmt.Errorf("failed to delete fragment: %w", err)
+	}
+
+	fmt.Printf("Fragment deleted successfully!\n")
+	fmt.Printf("ID: %d\n", fragment.ID)
+	fmt.Printf("Content: %s\n", fragment.Content)
 
 	return nil
 }
