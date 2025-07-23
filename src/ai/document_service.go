@@ -35,4 +35,3 @@ func (s *Service) CompressFragments(ctx context.Context) error {
 	}
 	return compressor.CompressFragments(ctx)
 }
-

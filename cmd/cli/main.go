@@ -36,8 +36,8 @@ func main() {
 						Action: createFragment,
 					},
 					{
-						Name:  "list",
-						Usage: "List all fragments",
+						Name:   "list",
+						Usage:  "List all fragments",
 						Action: listFragments,
 					},
 					{

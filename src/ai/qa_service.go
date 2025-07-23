@@ -120,7 +120,7 @@ func min(a, b int) int {
 func (s *QAService) generateAnswer(ctx context.Context, question, documentContext, webContext string, useWebSearch bool) (string, error) {
 	// プロンプト構築
 	prompt := s.buildAnswerPrompt(question, documentContext, webContext, useWebSearch)
-	
+
 	// デバッグ: プロンプトの最初の500文字を表示
 	fmt.Printf("Generated prompt (first 500 chars): %s...\n", prompt[:min(len(prompt), 500)])
 
@@ -204,7 +204,7 @@ func (s *QAService) AskGlobalQuestion(ctx context.Context, req GlobalQARequest) 
 
 	fmt.Printf("Global QA: Found %d documents in latest version (%s)\n", len(documents), latestVersion.Format("2006-01-02 15:04:05"))
 	for i, doc := range documents {
-		fmt.Printf("Document %d: ID=%d, Title=%s, Fragments=%d, Tags=%d\n", 
+		fmt.Printf("Document %d: ID=%d, Title=%s, Fragments=%d, Tags=%d\n",
 			i+1, doc.ID, doc.Title, len(doc.Fragments), len(doc.Tags))
 	}
 
@@ -254,7 +254,7 @@ func (s *QAService) buildGlobalContext(documents []models.Document) string {
 
 		context += fmt.Sprintf("=== Document %d: %s ===\n", i+1, document.Title)
 		context += fmt.Sprintf("Summary: %s\n", document.Summary)
-		
+
 		// タグ情報を追加
 		if len(document.Tags) > 0 {
 			context += "Tags: "
